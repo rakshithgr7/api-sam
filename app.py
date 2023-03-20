@@ -19,14 +19,15 @@ def lambda_handler(event, context):
     '''
     
     # define the functions used to perform the CRUD operations
+    
     def ddb_create(x):
+        print(x)
         dynamo.put_item(**x)
         return x
 
-    def ddb_read(x):
-        dynamo.get_item(**x)
-        return x
-
+    def ddb_read():
+        response = dynamo.scan()
+        return(response['Items'])
     def ddb_update(x):
         dynamo.update_item(**x)
         return x
@@ -37,8 +38,6 @@ def lambda_handler(event, context):
     def echo(x):
         return x
 
-    operation = event['operation']
-
     operations = {
         'create': ddb_create,
         'read': ddb_read,
@@ -46,8 +45,31 @@ def lambda_handler(event, context):
         'delete': ddb_delete,
         'echo': echo,
     }
-
-    if operation in operations:
-        return operations[operation](event.get('payload'))
+    
+    if(event['httpMethod']!='GET'):
+        body=json.loads(event['body'])
+        operation=body['operation']
+        payload = body['payload']
+        if operation in operations:
+            operations[operation](payload)
+            statusCode=200
+            data = "success"
+            return{
+                "statusCode":statusCode,
+                "body":json.dumps(data),
+                "headers":{
+                    "Content-Type":"application/json"
+                    
+                }
+            }
+            
     else:
-        raise ValueError('Unrecognized operation "{}"'.format(operation))
+        data=ddb_read()
+        statusCode=200
+        return{
+        "statusCode":statusCode,
+        "body":json.dumps(data),
+        "headers":{
+            "Content-Type":"application/json"
+        }
+        }
